@@ -58,23 +58,23 @@ app = {
       );
       
       // Send a message announcing the user's arrival to all users.
-      that.channel.event_queue(
-         "chat", {
-            "object": {
-               "message": that.user.name + " joined the chat."
-            }
-         }
-      );
+      // that.channel.event_queue(
+      //    "chat", {
+      //       "object": {
+      //          "message": that.user.name + " joined the chat."
+      //       }
+      //    }
+      // );
    }, // end log_in
 
-   send_message : function(userTo, messageText) {
+   send_message : function(messageText) {
       var that = this;
 
       // who am I sending it to?
       that.channel.event_queue(
-         "chat-" + userTo, {         // which queue to send to? == "chat-user"
+         "chat", {         // which queue to send to? == "chat-user"
             "object" : {
-               "message" : that.user.name + ": " + messageText
+               "message" : messageText
             }
          }
       );
@@ -117,23 +117,16 @@ app = {
 
 
             // was a message sent? to / from whom?
-            else if ((res = /^chat-(.+)/i.exec(name)) && (eventObj.object.message)) {
-               // just received a message, log it out!
-               console.log(eventObj)
-
-               // was this a message that I sent?
-               var was_sent_by_me = eventObj.this_session;
+            else if (name == "chat" && (eventObj.object.message)) {
 
                if(eventObj.object.message == "") {
                   console.log("empty message!");
                   return;
                }
 
-               $("#chat_box").append(eventObj.object.message + "\n");
-
-               if( ! was_sent_by_me ) {
-                  // somebody just sent me a message, get it jarvis!
-               }
+               //#live_text
+               $('#live_text').val(eventObj.object.message);
+               $("#input_text").val(eventObj.object.message);
             }
          },
 
@@ -155,6 +148,14 @@ app = {
       // Connect to the API channel.
       that.channel = that.connect();
       that.channel.debug_mode(true);
+
+      //#input_text
+      $("#input_text").keyup(function() {
+         console.log($(this).val());
+         that.send_message($(this).val());
+      })
+
+      
    } // end init
 }
 
