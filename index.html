@@ -8,50 +8,9 @@
    <meta name="author" content="Evan Noon, Kyle Smith">
 
    <link href="assets/css/bootstrap.css" rel="stylesheet">
-   <link href="assets/css/bootstrap-responsive.css" rel="stylesheet">
+   <link href="assets/css/jquery-linedtextarea.css" rel="stylesheet">
+   <link href="assets/css/app.css" rel="stylesheet">
    
-   <style type="text/css">
-
-      html, body, #main {
-         min-height: 100%;
-         height: 100%;
-         overflow: hidden;
-      }
-      
-      #main > .row-fluid:first-child {
-         display: block;
-         height: 99%;
-      }
-      
-      #main > .row-fluid:first-child > div {
-         display: block;
-         height: 100%;
-      }
-
-      textarea {
-         display: block;
-         width: 100%;
-      }
-
-      #chat_box {
-         display: block;
-         white-space: pre-wrap; 
-         height: 80%;
-      }
-
-      #code_view {
-         white-space: pre; 
-      }
-
-      #code_container {
-         display: block;
-         height: 90%;
-         padding: 5px 10px;
-         margin: 5px 10px;
-      }
-
-   </style>
-
    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
    <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
@@ -61,24 +20,11 @@
 
 <body>
 
-   <div id="main">
-      <div class="row-fluid">
-         <div class="span9"> 
-            <div id="code_container" contenteditable="true" style="display:hidden"></div>
-            <div id="code_view"></div>
-         </div>
-         <div class="span3" style="margin: 0; padding: 5px 10px;">
-            <div class="row-fluid">
-               <textarea rows="0" readonly="yes" id="chat_box" style="height: 400px"></textarea>
-               <!-- <div id="chat_box" style="height: 400px; overflow-y: scroll; margin-bottom: 10px; width: 100%;"></div> -->
-            </div>
-            <div class="row-fluid">
-               <textarea type="text" id="chat_input"></textarea>
-            </div>
-         </div>
-      </div>
-   </div>
-
+   <textarea id="codearea" name="codearea" cols="120" rows="40"></textarea>
+   <ul id="chat">
+      <li id="view"><textarea rows="0" readonly="true"></textarea></li>
+      <li id="input"><textarea></textarea></li>
+   </ul>
    
    
    <!-- Hidden Modals for changing settings
@@ -114,9 +60,33 @@
    <!-- Le javascript
    ================================================== -->
    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+   <script src="assets/js/jquery-linedtextarea.js"></script>
+   <script src="assets/js/libs.js"></script>
    <script src="assets/js/bootstrap.js"></script>
    <script src="https://apps.imoapi.com/imo.im/api/2/imoapi-min.js"></script>
    <script src="assets/js/code-sync.js"></script>
 
+   <script>
+      // baseline DOM presentation setup
+      $(function() {
+         var 
+         $codearea = $('#codearea').linedtextarea().focus(),   // add line numbers to text area
+         $codecontain = $('.linedwrap'),                       // grab new, outer container
+         $chat = $('#chat'),
+         $input = $('#input'),
+         $view = $('#view');
+         
+
+         // set up chat window
+         var code_width = $codecontain.width(), chat_width = $(document).width() - code_width;
+         $chat.width(chat_width);
+      })
+   </script>
+
 </body>
 </html>
+
+
+
+
+

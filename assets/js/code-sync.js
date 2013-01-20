@@ -10,10 +10,14 @@ app = {
 
    // app vars
    channel : null,
+   connected : false,
    user : null,
    users : null,
+   new_users : {},
    owner : false,
    timer : null,
+   lastPos : 0,
+   code_params: { old_vars : {}, vars : {} },
 
    // DOM vars
    $userInfo : null,
@@ -127,16 +131,16 @@ app = {
       return this.send_event("chat", { type: "message", value: messageText });
    },
    
-   send_code_start : function() {
-      return this.send_event("code", { type: "type_start", value: null });
+   send_code_start : function(cursorPos) {
+      return this.send_event("code", { type: "type_start", value: { cursor_pos: cursorPos } });
    },
    
-   send_code_finish : function() {
-      return this.send_event("code", { type: "type_finish", value: null });
+   send_code_finish : function(cursorPos) {
+      return this.send_event("code", { type: "type_finish", value: { cursor_pos: cursorPos } });
    },
 
-   send_code_update : function(codeText) {
-      return this.send_event("code", { type: "update", value: codeText });
+   send_code_update : function(codeText, cursorPos) {
+      return this.send_event("code", { type: "update", value: { text: codeText, cursor_pos: cursorPos } });
    },
 
    connect : function() {
@@ -145,6 +149,7 @@ app = {
       client = {
          connect: function() {
             console.log("channel connected");
+            that.connected = true;
 
             // once connected, log in
             that.log_in();
@@ -160,15 +165,11 @@ app = {
 
                if (that.users.add_user(eventObj) == "join") {
                   console.log("New user: " + eventObj.setter)
+                  that.new_users[eventObj.setter] = "logged in";
                }
                else {
-                  console.log("User returned: " + eventObj.object.first_name)
-                  console.log(eventObj)
-               }
-               
-               // update my user data in the users list
-               if(eventObj.setter == that.user.id) {
-                  console.log("Setting my data! I'm " + that.user.id)
+                  console.log("User returned: " + eventObj.setter)
+                  that.new_users[eventObj.setter] = "returned";
                }
             }
 
@@ -179,7 +180,7 @@ app = {
                if(eventObj.object.type == "message") {
                   // who sent it?
                   var author = eventObj.setter == that.user.id ? 'me' : that.users.get_data(eventObj.setter, 'first_name') + ' ' + that.users.get_data(eventObj.setter, 'last_name');
-                  $('#chat_box').attr('rows', parseInt($('#chat_box').attr('rows')) + 1).append(author + ': ' + eventObj.object.value);
+                  $('#view textarea').attr('rows', parseInt($('#view textarea').attr('rows')) + 1).append(author + ': ' + eventObj.object.value);
                }
                else if(eventObj.object.type == "profile_info") {
                   console.log("setting profile info for: " + eventObj.setter)
@@ -188,30 +189,54 @@ app = {
                      'last_name'    : eventObj.object.value.last_name,
                      'icon_url'     : eventObj.object.value.icon_url
                   }
+
+                  // check if we should announce the user
+                  if(that.new_users[eventObj.setter]) {
+                     var author = that.users.get_data(eventObj.setter, 'first_name') + ' ' + that.users.get_data(eventObj.setter, 'last_name');
+                     if(eventObj.setter == that.user.id) {
+                        author += ' (you)';
+                     }
+
+                     $('#view textarea').attr('rows', parseInt($('#view textarea').attr('rows')) + 1).append(author + " has just " + that.new_users[eventObj.setter] + "\n");
+                     // now remove from the announcement queue
+                     delete that.new_users[eventObj.setter] 
+                  }
                }
             }
 
             // was a code change sent?
             else if (name == "code") {
                // code queue logic here
-
                if(eventObj.setter != that.user.id) {
                   // someone else is sending code logic 
                   if(eventObj.object.type == "type_start") {
                      // disable editing
-                     that.$editor.attr('contenteditable', false);
+                     that.$editor.attr('readonly', true);
                   }
                   else if(eventObj.object.type == "type_finish") {
                      // re-enable editing
-                     that.$editor.attr('contenteditable', true);
+                     that.$editor.attr('readonly', false);
                   }
                   else if(eventObj.object.type == "update") {
                      // update code content
-                     that.$editor.html(eventObj.object.value);
+                     that.$editor.val(eventObj.object.value.text);
                   }
+                  
+                  that.lastPos = eventObj.object.value.cursor_pos;
                }
-                     
-               that.$viewer.html(eventObj.object.value);
+               else if(eventObj.object.type == "type_finish") {
+                  that.lastPos = eventObj.object.value.cursor_pos;
+               }
+
+               // now handle announcements
+               if(eventObj.object.type == "type_finish") {
+                  
+               }
+
+               console.log("new cursor pos: " + that.lastPos);
+               if( ! that.owner && eventObj.setter != that.user.id ) {
+                  that.$editor.selectRange(that.lastPos, that.lastPos);
+               }
             }
          },
 
@@ -232,49 +257,53 @@ app = {
          keyboard : false,
       }).modal('hide');
 
-
-      that.$chat = $('#chat_input').keydown(function(event) {
+      that.$chat = $('#input textarea').keydown(function(event) {
          if(event.which == 13) {
             // entered text in chat input box, send it 
             event.preventDefault();
-            that.send_message($('#chat_input').val() + "\n");
-            $('#chat_input').val('');
+            that.send_message($('#input textarea').val() + "\n");
+            $('#input textarea').val('');
          }
       });
       
-      that.$viewer = $("#code_view");
-      that.$editor = $("#code_container");
+      that.$editor = $("#codearea");
 
       that.$editor
       .on('focus', function() {
-          var $this = $(this);
-          $this.data('before', $this.html());
-          return $this;
+         console.log("got focus! moving cursor to: " + that.lastPos);
+         var $this = $(this).selectRange(that.lastPos, that.lastPos);
+         $this.data('before', $this.val());
+         return $this;
       })
-      // .on('keydown', function() {
-      //  key hold for backspace / repeating keys
-      // })
-      .on('blur keyup paste', function() {
+      .on('blur keyup paste', function(event) {
+         console.log('got blur, keyup, paste!');
           var $this = $(this);
-          if ($this.data('before') !== $this.html()) {
-              $this.data('before', $this.html());
+          if (($this.data('before') !== $this.val()) || event.type == 'keyup' && that.connected) {
+              $this.data('before', $this.val());
               $this.trigger('change');
           }
           return $this;
       })
-      .on('blur', function() {
-         console.log('on blur!');
-         var $this = $(this);
-         $this.hide();
-         that.$viewer.show();
+      // from http://stackoverflow.com/questions/9950894/adding-tabs-to-textareas-using-javascript
+      .keydown(function(e) {
+         var $this, end, start;
+         if (e.keyCode === 9) {
+            start = this.selectionStart;
+            end = this.selectionEnd;
+            $this = $(this);
+            $this.val($this.val().substring(0, start) + "\t" + $this.val().substring(end));
+            // $this.val($this.val().substring(0, start) + "   " + $this.val().substring(end));
+            this.selectionStart = this.selectionEnd = start + 1;
+            return false;
+         }
       })
-      .change(function() {
+      .on('change', function() {
          console.log("changed!") 
          if(that.owner) {
-            that.send_code_update($(this).html());
+            that.send_code_update($(this).val(), $(this).getCursorPosition());
          }
          else {
-            that.send_code_start();
+            that.send_code_start(that.lastPos);
             that.owner = true;
          }
 
@@ -283,29 +312,15 @@ app = {
          clearTimeout(that.timer);
          that.timer = setTimeout(function() {
             that.owner = false;
-            that.send_code_update($(self).html());
-            that.send_code_finish(); 
+            that.send_code_update($(self).val(), $(self).getCursorPosition());
+            that.send_code_finish($(self).getCursorPosition()); 
          }, 600);
 
       });
       
-      that.$viewer
-      .on('focus', function() {
-         var $this = $(this);
-         $this.hide();
-         that.$editor.show().focus()
-      })
-
-      that.$usersList = $("#users_list_container").change(function() {
-         console.log('changed!') ;
-      })
-      
       // Connect to the API channel.
       that.channel = that.connect();
       that.channel.debug_mode(true);
-
-
-      
    } // end init
 }
 
