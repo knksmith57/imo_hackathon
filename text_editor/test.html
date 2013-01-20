@@ -1,0 +1,42 @@
+<html>
+<head>
+<title>EditArea Test</title>
+<script language="javascript" type="text/javascript" src="./edit_area/edit_area_full.js"></script>
+<script language="javascript" type="text/javascript">
+editAreaLoader.init({
+	id : "textarea_1"		// textarea id
+	,syntax: "js"			// syntax to be uses for highgliting
+	,start_highlight: true		// to display with highlight mode on start-up
+	,allow_toggle: false
+});
+
+		function toogle_editable(id)
+		{
+			editAreaLoader.execCommand(id, 'set_editable', !editAreaLoader.execCommand(id, 'is_editable'));
+		}
+
+
+</script>
+</head>
+<body>
+<form method="post">
+	<textarea id="textarea_1" name="content" cols="80" rows="15">
+
+/*This is some css that will be editable with EditArea.*/
+body, html{
+	margin: 0; 
+	padding: 0;
+	height: 100%;
+	border: none;
+	overflow: hidden;
+}</textarea>
+<br />
+	<input type='button' onclick='alert(editAreaLoader.getValue("textarea_1"));' value='get value' />
+	<input type='button' onclick='toogle_editable("textarea_1");' value='Toggle readonly mode' />
+	<input type='button' onclick='editAreaLoader.setValue("textarea_1", "new_value");' value='set value' />
+
+
+
+</form>
+</body>
+</html>
