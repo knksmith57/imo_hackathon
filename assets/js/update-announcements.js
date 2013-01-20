@@ -1,3 +1,5 @@
+// this was a work in progress for parsing changes in the code editor
+// for accouncements / an *activity feed*
 $(document).ready( function(){
    $("#show").click( function() {
       var text = $("#code").val();
